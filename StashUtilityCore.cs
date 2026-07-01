@@ -690,6 +690,7 @@ namespace StashUtility
                 }
                 ImGui.Checkbox("Hide Normal (White) Waystones", ref Settings.HideNormalWaystones);
                 ImGui.SliderFloat("Border Thickness", ref Settings.BorderThickness, 1f, 10f);
+                ImGui.SliderFloat("Border Margin", ref Settings.BorderMargin, 0f, 10f);
 
                 string[] borderStyles = { "Solid", "Dashed", "Dotted" };
                 ImGui.Combo("Bad Highlight Border Style", ref Settings.FrameStyleBad, borderStyles, borderStyles.Length);
@@ -1295,13 +1296,21 @@ namespace StashUtility
 
             if (!isBad && !passesNumericalFilters) return;
 
+            float scale = size.X / 52.0f;
+            float margin = Settings.BorderMargin * scale; // Adaptive margin for 4K scaling where bounding boxes overlap
+            float activeBorderThickness = 0f;
+
             if (Settings.ShowModBorder && (isBad || isGood || passesNumericalFilters))
             {
                 Vector4 borderCol = isBad ? Settings.BadColor : Settings.GoodColor;
                 float thickness = isBad ? Settings.BorderThickness : Math.Max(1.5f, Settings.BorderThickness - 0.5f);
                 int style = isBad ? Settings.FrameStyleBad : Settings.FrameStyleGood;
 
-                AddStyledRect(ImGui.GetBackgroundDrawList(), pos + new Vector2(1, 1), pos + size - new Vector2(1, 1), ImGuiHelper.Color(borderCol), thickness, style);
+                activeBorderThickness = thickness;
+                float halfThickness = thickness / 2.0f;
+                float inset = margin + halfThickness;
+
+                AddStyledRect(ImGui.GetBackgroundDrawList(), pos + new Vector2(inset, inset), pos + size - new Vector2(inset, inset), ImGuiHelper.Color(borderCol), thickness, style);
             }
 
             if ((isWaystone || isTablet) && Settings.ShowRarityBorder)
@@ -1315,7 +1324,7 @@ namespace StashUtility
                     _ => Settings.NormalRarityColor
                 };
 
-                float offset = 1f + (Settings.ShowModBorder ? Settings.BorderThickness : 0f);
+                float offset = margin + activeBorderThickness;
                 float sizeVal = Settings.RarityIndicatorSize;
                 var p0 = pos + new Vector2(size.X - offset - sizeVal, offset);
                 var p1 = pos + new Vector2(size.X - offset, offset);
@@ -1325,17 +1334,18 @@ namespace StashUtility
 
             if (isGreat)
             {
-                float scale = size.X / 52.0f;
                 float arrowSize = Settings.GreatIndicatorSize * scale;
-                float padding = 4f * scale;
+                float borderPad = activeBorderThickness > 0 ? activeBorderThickness : 0f;
+                float totalPadX = margin + borderPad;
+                float totalPadY = margin + borderPad;
 
                 Vector2 topTip = Settings.GreatIndicatorPosition switch
                 {
-                    0 => pos + new Vector2(padding + (arrowSize / 2), padding), // Top-Left
-                    1 => pos + new Vector2(size.X - padding - (arrowSize / 2), padding + (Settings.ShowRarityBorder ? Settings.RarityIndicatorSize : 0f)), // Top-Right
-                    2 => pos + new Vector2(padding + (arrowSize / 2), size.Y - padding - arrowSize), // Bottom-Left
-                    3 => pos + new Vector2(size.X - padding - (arrowSize / 2), size.Y - padding - arrowSize), // Bottom-Right
-                    _ => pos + new Vector2(padding + (arrowSize / 2), padding)
+                    0 => pos + new Vector2(totalPadX + (arrowSize / 2), totalPadY), // Top-Left
+                    1 => pos + new Vector2(size.X - totalPadX - (arrowSize / 2), totalPadY + (Settings.ShowRarityBorder ? Settings.RarityIndicatorSize : 0f)), // Top-Right
+                    2 => pos + new Vector2(totalPadX + (arrowSize / 2), size.Y - totalPadY - arrowSize), // Bottom-Left
+                    3 => pos + new Vector2(size.X - totalPadX - (arrowSize / 2), size.Y - totalPadY - arrowSize), // Bottom-Right
+                    _ => pos + new Vector2(totalPadX + (arrowSize / 2), totalPadY)
                 };
 
                 var dl = ImGui.GetBackgroundDrawList();

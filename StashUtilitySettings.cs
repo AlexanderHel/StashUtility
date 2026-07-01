@@ -60,6 +60,7 @@ namespace StashUtility
 
         // Visuals
         public float BorderThickness = 3f;
+        public float BorderMargin = 4f;
         public float RarityIndicatorSize = 10f;
         public bool ShowRarityBorder = true;
         public bool ShowModBorder = true;
