@@ -127,6 +127,39 @@ namespace StashUtility
             }
         }
 
+        private void DrawMinMaxFilterTableRow(string label, string id, int maxSliderVal, ref bool filterMin, ref int minVal, ref bool filterMax, ref int maxVal)
+        {
+            ImGui.PushID(id);
+            ImGui.TableNextRow();
+            
+            // Column 1: Label
+            ImGui.TableNextColumn();
+            ImGui.AlignTextToFramePadding();
+            ImGui.Text(label);
+            
+            // Column 2: Min
+            ImGui.TableNextColumn();
+            ImGui.Checkbox("Min", ref filterMin);
+            if (filterMin)
+            {
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(120f);
+                ImGui.SliderInt("##minval", ref minVal, 0, maxSliderVal);
+            }
+            
+            // Column 3: Max
+            ImGui.TableNextColumn();
+            ImGui.Checkbox("Max", ref filterMax);
+            if (filterMax)
+            {
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(120f);
+                ImGui.SliderInt("##maxval", ref maxVal, 0, maxSliderVal);
+            }
+            
+            ImGui.PopID();
+        }
+
         public override void DrawSettings()
         {
             ImGui.Checkbox("Show Overlay When Game in Background", ref Settings.ShowOverlayInBackground);
@@ -463,49 +496,19 @@ namespace StashUtility
                         ImGui.SliderInt("Max Revives Allowed##val", ref Settings.MaxRevivesAvailable, 0, 6);
                     }
 
-                    ImGui.Checkbox("Filter Item Rarity", ref Settings.FilterMinItemRarity);
-                    if (Settings.FilterMinItemRarity)
+                    if (ImGui.BeginTable("FiltersTable", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.PadOuterX))
                     {
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosX(300f);
-                        ImGui.SetNextItemWidth(150f);
-                        ImGui.SliderInt("Min Item Rarity (%)##val", ref Settings.MinItemRarity, 0, 200);
-                    }
+                        ImGui.TableSetupColumn("Criteria", ImGuiTableColumnFlags.WidthFixed, 180f);
+                        ImGui.TableSetupColumn("Minimum Limit", ImGuiTableColumnFlags.WidthFixed, 190f);
+                        ImGui.TableSetupColumn("Maximum Limit", ImGuiTableColumnFlags.WidthFixed, 190f);
 
-                    ImGui.Checkbox("Filter Pack Size", ref Settings.FilterMinPackSize);
-                    if (Settings.FilterMinPackSize)
-                    {
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosX(300f);
-                        ImGui.SetNextItemWidth(150f);
-                        ImGui.SliderInt("Min Pack Size (%)##val", ref Settings.MinPackSize, 0, 100);
-                    }
+                        DrawMinMaxFilterTableRow("Item Rarity", "ItemRarity", 200, ref Settings.FilterMinItemRarity, ref Settings.MinItemRarity, ref Settings.FilterMaxItemRarity, ref Settings.MaxItemRarity);
+                        DrawMinMaxFilterTableRow("Pack Size", "PackSize", 100, ref Settings.FilterMinPackSize, ref Settings.MinPackSize, ref Settings.FilterMaxPackSize, ref Settings.MaxPackSize);
+                        DrawMinMaxFilterTableRow("Monster Rarity", "MonsterRarity", 100, ref Settings.FilterMinMonsterRarity, ref Settings.MinMonsterRarity, ref Settings.FilterMaxMonsterRarity, ref Settings.MaxMonsterRarity);
+                        DrawMinMaxFilterTableRow("Monster Effectiveness", "MonsterEffectiveness", 100, ref Settings.FilterMinMonsterEffectiveness, ref Settings.MinMonsterEffectiveness, ref Settings.FilterMaxMonsterEffectiveness, ref Settings.MaxMonsterEffectiveness);
+                        DrawMinMaxFilterTableRow("Waystone Drop Chance", "DropChance", 300, ref Settings.FilterMinWaystoneDropChance, ref Settings.MinWaystoneDropChance, ref Settings.FilterMaxWaystoneDropChance, ref Settings.MaxWaystoneDropChance);
 
-                    ImGui.Checkbox("Filter Monster Rarity", ref Settings.FilterMinMonsterRarity);
-                    if (Settings.FilterMinMonsterRarity)
-                    {
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosX(300f);
-                        ImGui.SetNextItemWidth(150f);
-                        ImGui.SliderInt("Min Monster Rarity (%)##val", ref Settings.MinMonsterRarity, 0, 100);
-                    }
-
-                    ImGui.Checkbox("Filter Monster Effectiveness", ref Settings.FilterMinMonsterEffectiveness);
-                    if (Settings.FilterMinMonsterEffectiveness)
-                    {
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosX(300f);
-                        ImGui.SetNextItemWidth(150f);
-                        ImGui.SliderInt("Min Monster Effectiveness (%)##val", ref Settings.MinMonsterEffectiveness, 0, 100);
-                    }
-
-                    ImGui.Checkbox("Filter Waystone Drop Chance", ref Settings.FilterMinWaystoneDropChance);
-                    if (Settings.FilterMinWaystoneDropChance)
-                    {
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosX(300f);
-                        ImGui.SetNextItemWidth(150f);
-                        ImGui.SliderInt("Min Waystone Drop Chance (%)##val", ref Settings.MinWaystoneDropChance, 0, 300);
+                        ImGui.EndTable();
                     }
                 }
 
@@ -1284,10 +1287,15 @@ namespace StashUtility
             {
                 if (Settings.FilterMaxRevives && revives > Settings.MaxRevivesAvailable) passesNumericalFilters = false;
                 if (Settings.FilterMinItemRarity && sumRarity < Settings.MinItemRarity) passesNumericalFilters = false;
+                if (Settings.FilterMaxItemRarity && sumRarity > Settings.MaxItemRarity) passesNumericalFilters = false;
                 if (Settings.FilterMinPackSize && sumPackSize < Settings.MinPackSize) passesNumericalFilters = false;
+                if (Settings.FilterMaxPackSize && sumPackSize > Settings.MaxPackSize) passesNumericalFilters = false;
                 if (Settings.FilterMinMonsterRarity && sumMonstRarity < Settings.MinMonsterRarity) passesNumericalFilters = false;
+                if (Settings.FilterMaxMonsterRarity && sumMonstRarity > Settings.MaxMonsterRarity) passesNumericalFilters = false;
                 if (Settings.FilterMinMonsterEffectiveness && sumEffect < Settings.MinMonsterEffectiveness) passesNumericalFilters = false;
+                if (Settings.FilterMaxMonsterEffectiveness && sumEffect > Settings.MaxMonsterEffectiveness) passesNumericalFilters = false;
                 if (Settings.FilterMinWaystoneDropChance && sumDropChance < Settings.MinWaystoneDropChance) passesNumericalFilters = false;
+                if (Settings.FilterMaxWaystoneDropChance && sumDropChance > Settings.MaxWaystoneDropChance) passesNumericalFilters = false;
             }
 
             if (isTablet && !isBad && !isGood) return;
