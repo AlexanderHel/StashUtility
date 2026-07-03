@@ -493,7 +493,7 @@ namespace StashUtility
                         ImGui.SameLine();
                         ImGui.SetCursorPosX(300f);
                         ImGui.SetNextItemWidth(150f);
-                        ImGui.SliderInt("Max Revives Allowed##val", ref Settings.MaxRevivesAvailable, 0, 6);
+                        ImGui.SliderInt("Max Revives Allowed##val", ref Settings.MaxRevivesAvailable, 0, 5);
                     }
 
                     if (ImGui.BeginTable("FiltersTable", 3, ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.PadOuterX))
@@ -1153,12 +1153,13 @@ namespace StashUtility
             int sumMonstRarity = 0;
             int sumEffect = 0;
             int sumDropChance = 0;
-            int revives = 0;
+            int revives = 5;
 
             int tabletGoodCount = 0;
 
             if (modsComponent != null)
             {
+                revives = Math.Max(0, Math.Min(5, 6 - modsComponent.ExplicitMods.Count));
                 var statsFromMods = GetStatsFromMods(modsComponent);
                 bool hasMemoryStats = statsFromMods.Count > 0;
                 if (statsFromMods.TryGetValue((GameStats)8210, out var rawDropChance)) sumDropChance = rawDropChance;
@@ -1910,6 +1911,20 @@ namespace StashUtility
                                 TryReadMemory<int>(mapAddr + offset, out var val32_1);
                                 TryReadMemory<int>(mapAddr + offset + 4, out var val32_2);
                                 lines.Add($"  +0x{offset:X2}: {val64:X16} | int32: {val32_1}, {val32_2}");
+                            }
+
+                            TryReadMemory<IntPtr>(mapAddr + 0x10, out var detailsAddr);
+                            lines.Add($"Map Component Details Pointer: 0x{detailsAddr.ToInt64():X}");
+                            if (detailsAddr != IntPtr.Zero)
+                            {
+                                lines.Add("Map Component Details Hex Dump (0x80 bytes):");
+                                for (int offset = 0; offset < 0x80; offset += 8)
+                                {
+                                    TryReadMemory<long>(detailsAddr + offset, out var val64);
+                                    TryReadMemory<int>(detailsAddr + offset, out var val32_1);
+                                    TryReadMemory<int>(detailsAddr + offset + 4, out var val32_2);
+                                    lines.Add($"  Details +0x{offset:X2}: {val64:X16} | int32: {val32_1}, {val32_2}");
+                                }
                             }
                         }
 
