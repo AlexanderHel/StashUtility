@@ -119,5 +119,7 @@
   "stashutility.normal_color": "Normal Rarity Color",
   "stashutility.list_empty": "   (List empty)",
   "stashutility.set_good": "Set GOOD",
-  "stashutility.set_bad": "Set BAD"
+  "stashutility.set_bad": "Set BAD",
+  "stashutility.enable_merchant_purchase": "Enable Merchant Purchase Panel Overlay",
+  "stashutility.enable_merchant_purchase_tooltip": "When checked, waystones and tablets in the active merchant purchase panel tab will be highlighted based on your criteria."
 }

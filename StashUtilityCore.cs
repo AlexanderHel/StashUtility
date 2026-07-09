@@ -165,6 +165,9 @@ namespace StashUtility
             ImGui.Checkbox(PluginText.T("stashutility.show_in_bg", "Show Overlay When Game in Background"), ref Settings.ShowOverlayInBackground);
             ImGuiHelper.ToolTip(PluginText.T("stashutility.show_in_bg_tooltip", "If checked, the waystone highlights will remain visible even when the game window is in the background."));
 
+            ImGui.Checkbox(PluginText.T("stashutility.enable_merchant_purchase", "Enable Merchant Purchase Panel Overlay"), ref Settings.EnableMerchantPurchasePanel);
+            ImGuiHelper.ToolTip(PluginText.T("stashutility.enable_merchant_purchase_tooltip", "When checked, waystones and tablets in the active merchant purchase panel tab will be highlighted based on your criteria."));
+
             ImGui.Checkbox(PluginText.T("stashutility.enable_debug", "Enable Debug Settings"), ref Settings.EnableDebugProbe);
             ImGuiHelper.ToolTip(PluginText.T("stashutility.enable_debug_tooltip", "Enables advanced debugging options, interactive explorer, and hovered item inspector."));
 
@@ -787,7 +790,7 @@ namespace StashUtility
 
         public override void DrawUI()
         {
-            if (!Settings.EnableWaystoneManager && !Settings.EnableTabletManager && !Settings.EnableDebugProbe) return;
+            if (!Settings.EnableWaystoneManager && !Settings.EnableTabletManager && !Settings.EnableDebugProbe && !Settings.EnableMerchantPurchasePanel) return;
 
             if (!Settings.ShowOverlayInBackground && !Core.Process.Foreground)
             {
@@ -808,114 +811,146 @@ namespace StashUtility
                 DrawDebugOverlay();
             }
 
-            if (!Settings.EnableWaystoneManager && !Settings.EnableTabletManager) return;
-
-            // Resolve Path
-            int[] pathIndices;
-            try
+            if (Settings.EnableWaystoneManager || Settings.EnableTabletManager)
             {
-                pathIndices = Settings.PathString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Select(int.Parse)
-                    .ToArray();
-            }
-            catch
-            {
-                lock (probeLog)
+                // Resolve Path
+                int[] pathIndices;
+                try
                 {
-                    probeLog.Clear();
-                    probeLog.Add("Error: Path String is not in a valid format (must be comma-separated integers)");
+                    pathIndices = Settings.PathString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(int.Parse)
+                        .ToArray();
                 }
-                return;
-            }
-
-            int[] stashTabsContainerPath;
-            if (pathIndices.Length >= 12 && pathIndices[pathIndices.Length - 4] == 0 && pathIndices[pathIndices.Length - 3] == 0 && pathIndices[pathIndices.Length - 2] == 0 && pathIndices[pathIndices.Length - 1] == 1)
-            {
-                // Fragment stash tab layout (e.g. 2,0,0,0,0,1,1,40,0,0,0,1)
-                stashTabsContainerPath = pathIndices.Take(pathIndices.Length - 5).ToArray();
-            }
-            else if (pathIndices.Length >= 9 && pathIndices[pathIndices.Length - 2] == 0 && pathIndices[pathIndices.Length - 1] == 1)
-            {
-                // Waystone stash tab layout (e.g. 2,0,0,0,1,1,45,0,1)
-                stashTabsContainerPath = pathIndices.Take(pathIndices.Length - 3).ToArray();
-            }
-            else
-            {
-                // Fallback / default behavior
-                stashTabsContainerPath = pathIndices.Length >= 6 
-                    ? pathIndices.Take(6).ToArray() 
-                    : new int[] { 2, 0, 0, 0, 1, 1 };
-            }
-
-            var stashTabsContainer = ResolvePath(gameUi.LeftPanel.Address, stashTabsContainerPath);
-            if (stashTabsContainer != IntPtr.Zero)
-            {
-                var tabsOffsets = ReadMemory<UiElementBaseOffset>(stashTabsContainer);
-                var tabs = ReadStdVector<IntPtr>(tabsOffsets.ChildrensPtr);
-
-                IntPtr activeTabAddr = IntPtr.Zero;
-                foreach (var tab in tabs)
+                catch
                 {
-                    if (tab == IntPtr.Zero) continue;
-                    if (IsElementVisible(tab))
+                    lock (probeLog)
                     {
-                        activeTabAddr = tab;
-                        break;
+                        probeLog.Clear();
+                        probeLog.Add("Error: Path String is not in a valid format (must be comma-separated integers)");
                     }
+                    return;
                 }
 
-                if (activeTabAddr != IntPtr.Zero)
+                int[] stashTabsContainerPath;
+                if (pathIndices.Length >= 12 && pathIndices[pathIndices.Length - 4] == 0 && pathIndices[pathIndices.Length - 3] == 0 && pathIndices[pathIndices.Length - 2] == 0 && pathIndices[pathIndices.Length - 1] == 1)
                 {
-                    // 1. Check if it's the Waystone stash tab: activeTabAddr -> 0 -> 1 has 16 children (tiers)
-                    bool processedAsWaystone = false;
-                    var waystonesTabRoot = ResolvePath(activeTabAddr, new int[] { 0, 1 });
-                    if (waystonesTabRoot != IntPtr.Zero)
+                    // Fragment stash tab layout (e.g. 2,0,0,0,0,1,1,40,0,0,0,1)
+                    stashTabsContainerPath = pathIndices.Take(pathIndices.Length - 5).ToArray();
+                }
+                else if (pathIndices.Length >= 9 && pathIndices[pathIndices.Length - 2] == 0 && pathIndices[pathIndices.Length - 1] == 1)
+                {
+                    // Waystone stash tab layout (e.g. 2,0,0,0,1,1,45,0,1)
+                    stashTabsContainerPath = pathIndices.Take(pathIndices.Length - 3).ToArray();
+                }
+                else
+                {
+                    // Fallback / default behavior
+                    stashTabsContainerPath = pathIndices.Length >= 6 
+                        ? pathIndices.Take(6).ToArray() 
+                        : new int[] { 2, 0, 0, 0, 1, 1 };
+                }
+
+                var stashTabsContainer = ResolvePath(gameUi.LeftPanel.Address, stashTabsContainerPath);
+                if (stashTabsContainer != IntPtr.Zero)
+                {
+                    var tabsOffsets = ReadMemory<UiElementBaseOffset>(stashTabsContainer);
+                    var tabs = ReadStdVector<IntPtr>(tabsOffsets.ChildrensPtr);
+
+                    IntPtr activeTabAddr = IntPtr.Zero;
+                    foreach (var tab in tabs)
                     {
-                        var waystoneOffsets = ReadMemory<UiElementBaseOffset>(waystonesTabRoot);
-                        var waystoneKids = ReadStdVector<IntPtr>(waystoneOffsets.ChildrensPtr);
-                        if (waystoneKids.Length == 16)
+                        if (tab == IntPtr.Zero) continue;
+                        if (IsElementVisible(tab))
                         {
-                            ProcessWaystoneTab(waystoneKids);
-                            processedAsWaystone = true;
+                            activeTabAddr = tab;
+                            break;
                         }
                     }
 
-                    if (!processedAsWaystone)
+                    if (activeTabAddr != IntPtr.Zero)
                     {
-                        // 2. Check if it's a Fragment stash tab with tablets: activeTabAddr -> 0 -> 0 -> 0 -> 1 has 6 children (pages)
-                        bool processedAsFragmentTablets = false;
-                        var fragmentTabletsRoot = ResolvePath(activeTabAddr, new int[] { 0, 0, 0, 1 });
-                        if (fragmentTabletsRoot != IntPtr.Zero)
+                        // 1. Check if it's the Waystone stash tab: activeTabAddr -> 0 -> 1 has 16 children (tiers)
+                        bool processedAsWaystone = false;
+                        var waystonesTabRoot = ResolvePath(activeTabAddr, new int[] { 0, 1 });
+                        if (waystonesTabRoot != IntPtr.Zero)
                         {
-                            var fragmentOffsets = ReadMemory<UiElementBaseOffset>(fragmentTabletsRoot);
-                            var fragmentKids = ReadStdVector<IntPtr>(fragmentOffsets.ChildrensPtr);
-                            if (fragmentKids.Length == 6)
+                            var waystoneOffsets = ReadMemory<UiElementBaseOffset>(waystonesTabRoot);
+                            var waystoneKids = ReadStdVector<IntPtr>(waystoneOffsets.ChildrensPtr);
+                            if (waystoneKids.Length == 16)
                             {
-                                ProcessFragmentTabletsTab(fragmentKids);
-                                processedAsFragmentTablets = true;
+                                ProcessWaystoneTab(waystoneKids);
+                                processedAsWaystone = true;
                             }
                         }
 
-                        if (!processedAsFragmentTablets)
+                        if (!processedAsWaystone)
                         {
-                            // 3. Otherwise, check if it's a normal/quad stash tab: activeTabAddr -> 0 -> 0 has slots directly
-                            var normalGridRoot = ResolvePath(activeTabAddr, new int[] { 0, 0 });
-                            if (normalGridRoot != IntPtr.Zero)
+                            // 2. Check if it's a Fragment stash tab with tablets: activeTabAddr -> 0 -> 0 -> 0 -> 1 has 6 children (pages)
+                            bool processedAsFragmentTablets = false;
+                            var fragmentTabletsRoot = ResolvePath(activeTabAddr, new int[] { 0, 0, 0, 1 });
+                            if (fragmentTabletsRoot != IntPtr.Zero)
                             {
-                                ProcessNormalTab(normalGridRoot);
+                                var fragmentOffsets = ReadMemory<UiElementBaseOffset>(fragmentTabletsRoot);
+                                var fragmentKids = ReadStdVector<IntPtr>(fragmentOffsets.ChildrensPtr);
+                                if (fragmentKids.Length == 6)
+                                {
+                                    ProcessFragmentTabletsTab(fragmentKids);
+                                    processedAsFragmentTablets = true;
+                                }
+                            }
+
+                            if (!processedAsFragmentTablets)
+                            {
+                                // 3. Otherwise, check if it's a normal/quad stash tab: activeTabAddr -> 0 -> 0 has slots directly
+                                var normalGridRoot = ResolvePath(activeTabAddr, new int[] { 0, 0 });
+                                if (normalGridRoot != IntPtr.Zero)
+                                {
+                                    ProcessNormalTab(normalGridRoot);
+                                }
                             }
                         }
                     }
                 }
+
+                // 3. Process Character Inventory Panel if open: RightPanel -> 5 -> 36
+                if (gameUi.RightPanel.Address != IntPtr.Zero && IsElementVisible(gameUi.RightPanel.Address))
+                {
+                    var inventoryGridRoot = ResolvePath(gameUi.RightPanel.Address, new int[] { 5, 36 });
+                    if (inventoryGridRoot != IntPtr.Zero)
+                    {
+                        ProcessNormalTab(inventoryGridRoot);
+                    }
+                }
             }
 
-            // 3. Process Character Inventory Panel if open: RightPanel -> 5 -> 36
-            if (gameUi.RightPanel.Address != IntPtr.Zero && IsElementVisible(gameUi.RightPanel.Address))
+            // 4. Process Merchant Purchase Panel if open
+            if (Settings.EnableMerchantPurchasePanel)
             {
-                var inventoryGridRoot = ResolvePath(gameUi.RightPanel.Address, new int[] { 5, 36 });
-                if (inventoryGridRoot != IntPtr.Zero)
+                var merchantPanelParent = ResolvePath(gameUi.Address, new int[] { 80, 8, 1 });
+                if (merchantPanelParent != IntPtr.Zero)
                 {
-                    ProcessNormalTab(inventoryGridRoot);
+                    var parentOff = ReadMemory<UiElementBaseOffset>(merchantPanelParent);
+                    var tabs = ReadStdVector<IntPtr>(parentOff.ChildrensPtr);
+
+                    IntPtr activeTabAddr = IntPtr.Zero;
+                    foreach (var tab in tabs)
+                    {
+                        if (tab == IntPtr.Zero) continue;
+                        if (IsElementVisible(tab))
+                        {
+                            activeTabAddr = tab;
+                            break;
+                        }
+                    }
+
+                    if (activeTabAddr != IntPtr.Zero)
+                    {
+                        var itemsContainer = ResolvePath(activeTabAddr, new int[] { 0 });
+                        if (itemsContainer != IntPtr.Zero)
+                        {
+                            ProcessNormalTab(itemsContainer);
+                        }
+                    }
                 }
             }
         }

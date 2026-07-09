@@ -112,5 +112,6 @@ namespace StashUtility
 
         // Debug Probe Mode
         public bool EnableDebugProbe = false;
+        public bool EnableMerchantPurchasePanel = false;
     }
 }
