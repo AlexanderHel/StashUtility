@@ -1980,7 +1980,7 @@ namespace StashUtility
 
             if (isTablet && isBad && Settings.DisableBadTabletHighlight)
             {
-                showModBorder = false;
+                return;
             }
 
             if (showModBorder && (isBad || isGood || passesNumericalFilters))
