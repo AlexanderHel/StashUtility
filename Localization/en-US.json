@@ -121,5 +121,13 @@
   "stashutility.set_good": "Set GOOD",
   "stashutility.set_bad": "Set BAD",
   "stashutility.enable_merchant_purchase": "Enable Merchant Purchase Panel Overlay",
-  "stashutility.enable_merchant_purchase_tooltip": "When checked, waystones and tablets in the active merchant purchase panel tab will be highlighted based on your criteria."
+  "stashutility.enable_merchant_purchase_tooltip": "When checked, waystones and tablets in the active merchant purchase panel tab will be highlighted based on your criteria.",
+  "stashutility.min_tablet_mods_to_highlight": "Min Good Mods To Highlight",
+  "stashutility.tablet.god_tooltip": "A God mod immediately flags the tablet as Good/Great, ignoring any Bad mods.",
+  "stashutility.show_waystone_mod_border": "Show Waystone Mod Highlight Border",
+  "stashutility.show_tablet_mod_border": "Show Tablet Mod Highlight Border",
+  "stashutility.tablet_good_color": "Tablet Good Highlight Color",
+  "stashutility.tablet_bad_color": "Tablet Bad Highlight Color",
+  "stashutility.waystone_great_color": "Waystone GREAT Arrow Color",
+  "stashutility.tablet_great_color": "Tablet GREAT Arrow Color"
 }

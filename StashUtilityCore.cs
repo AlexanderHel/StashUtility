@@ -11,6 +11,7 @@ namespace StashUtility
     using GameOffsets.Natives;
     using ImGuiNET;
     using Newtonsoft.Json;
+    using StashUtility.Models;
     using System;
     using System.Collections.Generic;
     using System.IO;
@@ -603,13 +604,14 @@ namespace StashUtility
                     {
                         ImGui.InputTextWithHint("##searchWaystone", PluginText.T("stashutility.search_database", "Search database..."), ref waystoneSearchTerm, 64);
                         var filtered = Data.ModDatabase.AllWaystoneMods
-                            .Where(m => m.Name.Contains(waystoneSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                            .Where(m => ModName(m).Contains(waystoneSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                        m.Name.Contains(waystoneSearchTerm, StringComparison.OrdinalIgnoreCase) ||
                                         m.Id.Contains(waystoneSearchTerm, StringComparison.OrdinalIgnoreCase))
                             .ToList();
 
                         foreach (var mod in filtered)
                         {
-                            if (ImGui.Selectable($"{mod.Name}##{mod.Id}"))
+                            if (ImGui.Selectable($"{ModName(mod)}##{mod.Id}"))
                             {
                                 if (!Settings.BadModPatterns.Contains(mod.Id) && !Settings.GoodModPatterns.Contains(mod.Id))
                                 {
@@ -744,7 +746,7 @@ namespace StashUtility
                                 var tabMods = Data.ModDatabase.AllTabletMods.Where(kvp.Value).ToList();
                                 
                                 ImGui.InputTextWithHint($"##search{kvp.Key}", PluginText.F("stashutility.tablet.search_category", "Search {0} Mods...", kvp.Key), ref tabletSearchTerm, 64);
-                                var filtered = tabMods.Where(m => m.Name.Contains(tabletSearchTerm, StringComparison.OrdinalIgnoreCase) || m.Id.Contains(tabletSearchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+                                var filtered = tabMods.Where(m => ModName(m).Contains(tabletSearchTerm, StringComparison.OrdinalIgnoreCase) || m.Name.Contains(tabletSearchTerm, StringComparison.OrdinalIgnoreCase) || m.Id.Contains(tabletSearchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
 
                                 if (ImGui.BeginChild($"Child{kvp.Key}", new Vector2(0, 250), ImGuiChildFlags.Borders))
                                 {
@@ -754,7 +756,7 @@ namespace StashUtility
                                         bool isBad = Settings.TabletBadModPatterns.Contains(mod.Id);
                                         bool isGod = Settings.TabletGodModPatterns.Contains(mod.Id);
 
-                                        ImGui.TextWrapped(mod.Name.Replace("%", "%%"));
+                                        ImGui.TextWrapped(ModName(mod).Replace("%", "%%"));
 
                                         if (ImGui.Checkbox(PluginText.Label("stashutility.tablet.good", "Good", $"g_{mod.Id}"), ref isGood))
                                         {
@@ -1780,7 +1782,7 @@ namespace StashUtility
                 }
                 else
                 {
-                    var pathMatch = System.Text.RegularExpressions.Regex.Match(path, @"Waystone(\d+)");
+                    var pathMatch = System.Text.RegularExpressions.Regex.Match(path, @"MapKeyTier(\d+)");
                     if (pathMatch.Success) int.TryParse(pathMatch.Groups[1].Value, out tier);
                 }
 
@@ -2074,6 +2076,12 @@ namespace StashUtility
             }
         }
 
+        private string ModName(WaystoneMod mod) =>
+            mod != null ? PluginText.T($"mod.waystone.{mod.Id}", mod.Name) : string.Empty;
+
+        private string ModName(TabletMod mod) =>
+            mod != null ? PluginText.T($"mod.tablet.{mod.Id}", mod.Name) : string.Empty;
+
         private void DrawModListUI(string title, List<string> currentList, List<string> targetList, Vector4 color, bool isCurrentlyBad)
         {
             ImGui.TextColored(color, title);
@@ -2084,7 +2092,9 @@ namespace StashUtility
                 string id = currentList[i];
                 var defW = Data.ModDatabase.AllWaystoneMods.FirstOrDefault(m => m.Id == id);
                 var defT = Data.ModDatabase.AllTabletMods.FirstOrDefault(m => m.Id == id);
-                string name = defW?.Name ?? defT?.Name ?? id;
+                string name = ModName(defW);
+                if (name.Length == 0) name = ModName(defT);
+                if (name.Length == 0) name = id;
 
                 ImGui.PushID(title + id);
                 if (ImGui.Button("X"))
