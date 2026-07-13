@@ -697,6 +697,12 @@ namespace StashUtility
 
             ImGui.Checkbox(PluginText.T("stashutility.enable_tablet_manager", "Enable Tablet Manager"), ref Settings.EnableTabletManager);
             ImGuiHelper.ToolTip(PluginText.T("stashutility.enable_tablet_manager_tooltip", "Enables or disables highlighting of precursor/breach tablets."));
+            if (Settings.EnableTabletManager)
+            {
+                ImGui.Indent();
+                ImGui.Checkbox(PluginText.T("stashutility.disable_bad_tablet_highlight", "Disable Bad Tablet Highlight"), ref Settings.DisableBadTabletHighlight);
+                ImGui.Unindent();
+            }
 
             if (Settings.EnableTabletManager)
             {
@@ -773,6 +779,23 @@ namespace StashUtility
                                             SaveSettings();
                                         }
                                         ImGuiHelper.ToolTip(PluginText.T("stashutility.tablet.god_tooltip", "A God mod immediately flags the tablet as Good/Great, ignoring any Bad mods."));
+
+                                        if ((isGood || isGod) && mod.MinRoll != mod.MaxRoll)
+                                        {
+                                            if (!Settings.TabletModRequiredMinRolls.ContainsKey(mod.Id))
+                                                Settings.TabletModRequiredMinRolls[mod.Id] = mod.MinRoll;
+                                            float requiredRoll = Settings.TabletModRequiredMinRolls[mod.Id];
+                                            ImGui.Indent(20f);
+                                            int intRoll = (int)requiredRoll;
+                                            ImGui.SetNextItemWidth(150f);
+                                            string formatStr = mod.Name.Contains("%") ? "%d%%" : "%d";
+                                            if (ImGui.SliderInt($"Req. Min Roll##min_{mod.Id}", ref intRoll, (int)mod.MinRoll, (int)mod.MaxRoll, formatStr))
+                                            {
+                                                Settings.TabletModRequiredMinRolls[mod.Id] = (float)intRoll;
+                                                SaveSettings();
+                                            }
+                                            ImGui.Unindent(20f);
+                                        }
                                         ImGui.Separator();
                                     }
                                 }
@@ -1863,7 +1886,19 @@ namespace StashUtility
 
                         if (def != null)
                         {
-                            if (Settings.TabletGodModPatterns.Contains(def.Id))
+                            bool passesRollCheck = true;
+                            if (def.MinRoll != def.MaxRoll && Settings.TabletModRequiredMinRolls.TryGetValue(def.Id, out float reqMin))
+                            {
+                                float val0 = float.IsNaN(mod.vals.v0) ? 0f : mod.vals.v0;
+                                float val1 = float.IsNaN(mod.vals.v1) ? 0f : mod.vals.v1;
+                                float val = Math.Abs(val0 != 0f ? val0 : val1);
+                                if (val > 0 && val < reqMin)
+                                {
+                                    passesRollCheck = false;
+                                }
+                            }
+
+                            if (Settings.TabletGodModPatterns.Contains(def.Id) && passesRollCheck)
                             {
                                 isGod = true;
                             }
@@ -1871,7 +1906,7 @@ namespace StashUtility
                             {
                                 isBad = true;
                             }
-                            if (Settings.TabletGoodModPatterns.Contains(def.Id))
+                            if (Settings.TabletGoodModPatterns.Contains(def.Id) && passesRollCheck)
                             {
                                 isGood = true;
                                 tabletGoodCount++;
@@ -1944,6 +1979,11 @@ namespace StashUtility
             float activeBorderThickness = 0f;
 
             bool showModBorder = (isWaystone && Settings.ShowModBorder) || (isTablet && Settings.ShowTabletModBorder);
+
+            if (isTablet && isBad && Settings.DisableBadTabletHighlight)
+            {
+                return;
+            }
 
             if (showModBorder && (isBad || isGood || passesNumericalFilters))
             {

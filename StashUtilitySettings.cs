@@ -9,8 +9,8 @@ namespace StashUtility
         // General
         public bool EnableWaystoneManager = true;
         public bool EnableTabletManager = true;
-        public bool EnableWaystoneUI = true;
         public bool EnableTabletUI = true;
+        public bool DisableBadTabletHighlight = false;
         public bool ShowOverlayInBackground = false;
 
         // UI path for the waystone stash tab
@@ -113,6 +113,7 @@ namespace StashUtility
         public List<string> TabletGoodModPatterns = new();
         public List<string> TabletBadModPatterns = new();
         public List<string> TabletGodModPatterns = new();
+        public Dictionary<string, float> TabletModRequiredMinRolls = new();
         public int MinGoodModsToIgnoreBad = 3;
 
         // Debug Probe Mode
